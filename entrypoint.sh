@@ -36,6 +36,7 @@ _PROJECT_NAME=$(basename "$GITHUB_REPOSITORY")
 export PROJECT_NAME="$_PROJECT_NAME"
 NAME="${NAME:-${PROJECT_NAME}_${RELEASE_NAME}}_${GOOS}_${GOARCH}"
 _EXTRA_FILES="${EXTRA_FILES:-""}"
+_COMPRESS="${COMPRESS:-"false"}"
 
 log_msg "Building application for $GOOS $GOARCH"
 # shellcheck disable=SC1091
@@ -55,25 +56,39 @@ FILE_LIST=$(echo "${FILE_LIST}" | awk '{$1=$1};1')
 log_msg "Preparing final artifact ..."
 log_msg "$FILE_LIST"
 if [[ "$GOOS" = "windows" ]]; then
-  _ARCHIVE=tmp.zip
-  zip -9r "$_ARCHIVE" ${FILE_LIST} # FILE_LIST unquoted on purpose
+  if [[ -z "$FILE_LIST" || "$_COMPRESS" = "true" ]]; then
+    _ARTIFECT_SUFFIX=".zip"
+    _ARTIFACT_NAME="${NAME}${_ARTIFECT_SUFFIX}"
+    zip -9r "$_ARTIFACT_NAME" ${FILE_LIST} # FILE_LIST unquoted on purpose
+  else
+    _ARTIFECT_SUFFIX=".exe"
+    _ARTIFACT_NAME="${NAME}${_ARTIFECT_SUFFIX}"
+  fi
 else
-  _ARCHIVE=tmp.tgz
-  tar cvfz "$_ARCHIVE" ${FILE_LIST} # FILE_LIST unquoted on purpose
+  # linux or macos-darwin
+  if [[ -z "$FILE_LIST" || "$_COMPRESS" = "true" ]]; then
+    _ARTIFECT_SUFFIX=".tgz"
+    _ARTIFACT_NAME="${NAME}${_ARTIFECT_SUFFIX}"
+    tar cvfz "$_ARTIFACT_NAME" ${FILE_LIST} # FILE_LIST unquoted on purpose
+  else
+    _ARTIFECT_SUFFIX=""
+    _ARTIFACT_NAME="${NAME}${_ARTIFECT_SUFFIX}"
+  fi
 fi
-log_msg "Final artifact is ready - $_ARCHIVE"
+ls -lh
+log_msg "Final artifact is ready - $_ARTIFACT_NAME"
 
-_CHECKSUM_MD5=$(md5sum ${_ARCHIVE} | cut -d ' ' -f 1)
-_CHECKSUM_SHA256=$(sha256sum ${_ARCHIVE} | cut -d ' ' -f 1)
+_CHECKSUM_MD5=$(md5sum "$_ARTIFACT_NAME" | cut -d ' ' -f 1)
+_CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_NAME" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
 curl \
   -X POST \
-  --data-binary @${_ARCHIVE} \
+  --data-binary @"$_ARTIFACT_NAME" \
   -H 'Content-Type: application/octet-stream' \
   -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-  "${UPLOAD_URL}?name=${NAME}.${_ARCHIVE/tmp./}"
+  "${UPLOAD_URL}?name=${_ARTIFACT_NAME}"
 
 if [[ "$_PUBILSH_CHECKSUM_SHA256" = "true" ]]; then
   curl \
