@@ -99,7 +99,7 @@ curl \
   --data-binary @"$_ARTIFACT_PATH" \
   -H 'Content-Type: application/octet-stream' \
   -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-  "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}"
+  "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}" | jq
 
 if [[ "$_PUBILSH_CHECKSUM_SHA256" = "true" ]]; then
   curl \
@@ -110,7 +110,7 @@ if [[ "$_PUBILSH_CHECKSUM_SHA256" = "true" ]]; then
     --data "$_CHECKSUM_SHA256" \
     -H 'Content-Type: text/plain' \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_sha256.txt"
+    "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_sha256.txt" | jq
 fi
 
 if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
@@ -122,5 +122,5 @@ if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
     --data "$_CHECKSUM_MD5" \
     -H 'Content-Type: text/plain' \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_md5.txt"
+    "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_md5.txt" | jq
 fi
