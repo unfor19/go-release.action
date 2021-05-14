@@ -45,7 +45,7 @@ log_msg "Building application for $GOOS $GOARCH"
 FILE_LIST=$(. /build.sh)
 log_msg "Completed building application for $GOOS $GOARCH"
 
-if [[ -z "$_EXTRA_FILES" ]]; then
+if [[ "$_EXTRA_FILES" = "" ]]; then
   log_msg "file=entrypoint.sh,line=22,col=1::EXTRA_FILES not set"
 fi
 
@@ -58,7 +58,7 @@ FILE_LIST=$(echo "${FILE_LIST}" | awk '{$1=$1};1')
 log_msg "Preparing final artifact ..."
 log_msg "$FILE_LIST"
 if [[ "$GOOS" = "windows" ]]; then
-  if [[ -z "$_EXTRA_FILES" || "$_COMPRESS" = "true" ]]; then
+  if [[ "$_EXTRA_FILES" != "" || "$_COMPRESS" = "true" ]]; then
     _ARTIFACT_SUFFIX=".zip"
     _ARTIFACT_PATH="${_RELEASE_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
     zip -9r "$_ARTIFACT_PATH" ${FILE_LIST} # FILE_LIST unquoted on purpose
@@ -68,7 +68,7 @@ if [[ "$GOOS" = "windows" ]]; then
   fi
 else
   # linux or macos-darwin
-  if [[ -n "$_EXTRA_FILES" || "$_COMPRESS" = "true" ]]; then
+  if [[ "$_EXTRA_FILES" != "" || "$_COMPRESS" = "true" ]]; then
     _ARTIFACT_SUFFIX=".tgz"
     _ARTIFACT_PATH="${_RELEASE_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
     tar cvfz "$_ARTIFACT_PATH" ${FILE_LIST} # FILE_LIST unquoted on purpose
