@@ -37,7 +37,7 @@ export PROJECT_NAME="$_PROJECT_NAME"
 NAME="${NAME:-${PROJECT_NAME}_${RELEASE_NAME}}_${GOOS}_${GOARCH}"
 _EXTRA_FILES="${EXTRA_FILES:-""}"
 _COMPRESS="${COMPRESS:-"false"}"
-_RELEASE_ARTIFACT_NAME="${RELEASE_ARTIFACT_NAME:-"$_PROJECT_NAME"}"
+_RELEASE_ARTIFACT_NAME="${RELEASE_ARTIFACT_NAME:-"$NAME"}"
 _GO_ARTIFACT_NAME="${GO_ARTIFACT_NAME:-"$_PROJECT_NAME"}"
 
 log_msg "Building application for $GOOS $GOARCH"
@@ -88,6 +88,8 @@ _CHECKSUM_MD5=$(md5sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
+
+log_msg "Release artifact name - $_RELEASE_ARTIFACT_NAME"
 
 curl \
   --connect-timeout 30 \
