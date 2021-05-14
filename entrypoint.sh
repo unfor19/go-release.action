@@ -60,20 +60,24 @@ log_msg "$FILE_LIST"
 if [[ "$GOOS" = "windows" ]]; then
   if [[ "$_EXTRA_FILES" != "" || "$_COMPRESS" = "true" ]]; then
     _ARTIFACT_SUFFIX=".zip"
+    _RELEASE_ARTIFACT_NAME="${_RELEASE_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
     _ARTIFACT_PATH="${_RELEASE_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
     zip -9r "$_ARTIFACT_PATH" ${FILE_LIST} # FILE_LIST unquoted on purpose
   else
     _ARTIFACT_SUFFIX=".exe"
+    _RELEASE_ARTIFACT_NAME="${_RELEASE_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
     _ARTIFACT_PATH="${_GO_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
   fi
 else
   # linux or macos-darwin
   if [[ "$_EXTRA_FILES" != "" || "$_COMPRESS" = "true" ]]; then
     _ARTIFACT_SUFFIX=".tgz"
+    _RELEASE_ARTIFACT_NAME="${_RELEASE_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
     _ARTIFACT_PATH="${_RELEASE_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
     tar cvfz "$_ARTIFACT_PATH" ${FILE_LIST} # FILE_LIST unquoted on purpose
   else
     _ARTIFACT_SUFFIX=""
+    _RELEASE_ARTIFACT_NAME="${_RELEASE_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
     _ARTIFACT_PATH="${_GO_ARTIFACT_NAME}${_ARTIFACT_SUFFIX}"
   fi
 fi
@@ -86,14 +90,20 @@ log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
 curl \
+  --connect-timeout 30 \
+  --retry 300 \
+  --retry-delay 5 \
   -X POST \
   --data-binary @"$_ARTIFACT_PATH" \
   -H 'Content-Type: application/octet-stream' \
   -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-  "${UPLOAD_URL}?name=${_ARTIFACT_PATH}"
+  "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}"
 
 if [[ "$_PUBILSH_CHECKSUM_SHA256" = "true" ]]; then
   curl \
+    --connect-timeout 30 \
+    --retry 300 \
+    --retry-delay 5 \
     -X POST \
     --data "$_CHECKSUM_SHA256" \
     -H 'Content-Type: text/plain' \
@@ -103,6 +113,9 @@ fi
 
 if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
   curl \
+    --connect-timeout 30 \
+    --retry 300 \
+    --retry-delay 5 \
     -X POST \
     --data "$_CHECKSUM_MD5" \
     -H 'Content-Type: text/plain' \
