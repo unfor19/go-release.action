@@ -15,13 +15,13 @@ log_msg(){
   echo -e "[LOG] $msg"
 }
 
-if [[ -z "$CMD_PATH" ]]; then
+_CMD_PATH="${CMD_PATH:-""}"
+
+if [[ -z "$_CMD_PATH" ]]; then
   log_msg "file=entrypoint.sh,line=6,col=1::CMD_PATH not set"
-  CMD_PATH=""
-  
 fi
 
-export CMD_PATH
+export CMD_PATH="$_CMD_PATH"
 
 #echo "::warning file=/build.sh,line=1,col=5::${FILE_LIST}"
 
