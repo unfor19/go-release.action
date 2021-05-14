@@ -20,11 +20,6 @@ if [[ -z "${CMD_PATH+x}" ]]; then
   export CMD_PATH=""
 fi
 
-# shellcheck disable=SC1091
-log_msg "Building application for $GOOS $GOARCH"
-FILE_LIST=$(. /build.sh)
-log_msg "Completed building application for $GOOS $GOARCH"
-
 #echo "::warning file=/build.sh,line=1,col=5::${FILE_LIST}"
 
 EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
@@ -32,10 +27,16 @@ echo "$EVENT_DATA" | jq .
 UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
 UPLOAD_URL=${UPLOAD_URL/\{?name,label\}/}
 RELEASE_NAME=$(echo "$EVENT_DATA" | jq -r .release.tag_name)
-PROJECT_NAME=$(basename "$GITHUB_REPOSITORY")
 NAME="${NAME:-${PROJECT_NAME}_${RELEASE_NAME}}_${GOOS}_${GOARCH}"
 _PUBILSH_CHECKSUM_SHA256="${_PUBILSH_CHECKSUM_SHA256:-"true"}"
 _PUBILSH_CHECKSUM_MD5="${_PUBILSH_CHECKSUM_MD5:-"false"}"
+_PROJECT_NAME=$(basename "$GITHUB_REPOSITORY")
+export PROJECT_NAME="$_PROJECT_NAME"
+
+log_msg "Building application for $GOOS $GOARCH"
+# shellcheck disable=SC1091
+FILE_LIST=$(. /build.sh)
+log_msg "Completed building application for $GOOS $GOARCH"
 
 if [ -z "${EXTRA_FILES+x}" ]; then
   echo "::warning file=entrypoint.sh,line=22,col=1::EXTRA_FILES not set"
