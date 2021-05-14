@@ -1,5 +1,6 @@
-FROM golang:1.14-alpine
-MAINTAINER Atsushi Nagase <a@ngs.io> (https://ngs.io)
+ARG GO_VERSION=1.16
+
+FROM golang:"${GO_VERSION}"-alpine
 
 LABEL "com.github.actions.name"="Go Release Binary"
 LABEL "com.github.actions.description"="Automate publishing Go build artifacts for GitHub releases"
