@@ -15,7 +15,7 @@ log_msg(){
   echo -e "[LOG] $msg"
 }
 
-if [[ -z "${CMD_PATH+x}" ]]; then
+if [[ -z "$CMD_PATH" ]]; then
   log_msg "file=entrypoint.sh,line=6,col=1::CMD_PATH not set"
   export CMD_PATH=""
 fi
@@ -32,17 +32,18 @@ _PUBILSH_CHECKSUM_MD5="${_PUBILSH_CHECKSUM_MD5:-"false"}"
 _PROJECT_NAME=$(basename "$GITHUB_REPOSITORY")
 export PROJECT_NAME="$_PROJECT_NAME"
 NAME="${NAME:-${PROJECT_NAME}_${RELEASE_NAME}}_${GOOS}_${GOARCH}"
+_EXTRA_FILES="${EXTRA_FILES:-""}"
 
 log_msg "Building application for $GOOS $GOARCH"
 # shellcheck disable=SC1091
 FILE_LIST=$(. /build.sh)
 log_msg "Completed building application for $GOOS $GOARCH"
 
-if [ -z "${EXTRA_FILES+x}" ]; then
-  echo "::warning file=entrypoint.sh,line=22,col=1::EXTRA_FILES not set"
+if [[ -z "$_EXTRA_FILES" ]]; then
+  log_msg "file=entrypoint.sh,line=22,col=1::EXTRA_FILES not set"
 fi
 
-FILE_LIST="${FILE_LIST} ${EXTRA_FILES}"
+FILE_LIST="${FILE_LIST} ${_EXTRA_FILES}"
 
 # shellcheck disable=SC1091
 FILE_LIST=$(echo "${FILE_LIST}" | awk '{$1=$1};1')
