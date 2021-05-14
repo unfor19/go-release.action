@@ -15,91 +15,55 @@ Extra environment variables:
 ```yaml
 # .github/workflows/release.yaml
 
-on: release
-name: Build Release
-jobs:
-  release-linux-386:
-    name: release linux/386
-    runs-on: ubuntu-latest
+  release-linux-binaries:
+    name: linux
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - GOARCH: "amd64"
+          - GOARCH: "386"
+          - GOARCH: "arm64"
     steps:
-    - uses: actions/checkout@master
-    - name: compile and release
-      uses: ngs/go-release.action@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GOARCH: "386"
-        GOOS: linux
-        EXTRA_FILES: "LICENSE"
-  release-linux-amd64:
-    name: release linux/amd64
-    runs-on: ubuntu-latest
+      - uses: actions/checkout@master
+      - name: compile and release
+        uses: unfor19/go-release.action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOARCH: ${{ matrix.GOARCH }}
+          GOOS: linux
+
+  release-macos-binaries:
+    name: macos-darwin
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - GOARCH: "amd64"
+          - GOARCH: "arm64"
     steps:
-    - uses: actions/checkout@master
-    - name: compile and release
-      uses: ngs/go-release.action@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GOARCH: amd64
-        GOOS: linux
-        EXTRA_FILES: "LICENSE"
-  release-linux-arm:
-    name: release linux/386
-    runs-on: ubuntu-latest
+      - uses: actions/checkout@master
+      - name: compile and release
+        uses: unfor19/go-release.action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOARCH: ${{ matrix.GOARCH }}
+          GOOS: darwin
+
+  release-windows-binaries:
+    name: windows
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - GOARCH: "amd64"
+          - GOARCH: "386"
     steps:
-    - uses: actions/checkout@master
-    - name: compile and release
-      uses: ngs/go-release.action@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GOARCH: "arm"
-        GOOS: linux
-        EXTRA_FILES: "LICENSE"
-  release-linux-arm64:
-    name: release linux/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: compile and release
-      uses: ngs/go-release.action@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GOARCH: arm64
-        GOOS: linux
-        EXTRA_FILES: "LICENSE"
-  release-darwin-amd64:
-    name: release darwin/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: compile and release
-      uses: ngs/go-release.action@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GOARCH: amd64
-        GOOS: darwin
-        EXTRA_FILES: "LICENSE"
-  release-windows-386:
-    name: release windows/386
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: compile and release
-      uses: ngs/go-release.action@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GOARCH: "386"
-        GOOS: windows
-        EXTRA_FILES: "LICENSE"
-  release-windows-amd64:
-    name: release windows/amd64
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: compile and release
-      uses: ngs/go-release.action@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GOARCH: amd64
-        GOOS: windows
-        EXTRA_FILES: "LICENSE"
+      - uses: actions/checkout@master
+      - name: compile and release
+        uses: unfor19/go-release.action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOARCH: ${{ matrix.GOARCH }}
+          GOOS: windows
 ```
