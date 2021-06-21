@@ -86,6 +86,7 @@ _PRE_RELEASE_FLAG=""
 _CONNECT_TIMEOUT="${CONNECT_TIMEOUT:-"300"}"
 _CONNECT_RETRY="${_CONNECT_RETRY:-"5"}"
 _RETRY_DELAY="${RETRY_DELAY:-"20"}"
+_OVERWRITE_RELEASE="${OVERWRITE_RELEASE:-""}"
 
 if [[ -z "$_CMD_PATH" ]]; then
   log_msg "CMD_PATH not set"
@@ -93,7 +94,13 @@ fi
 
 log_msg "Event Type: $GITHUB_EVENT_NAME"
 if [[ "$_PRE_RELEASE" = "" &&  "$GITHUB_EVENT_NAME" = "push" ]] || [[ "$_PRE_RELEASE" = "true" ]]; then
+  log_msg "Will publish as PRE-RELEASE"
   _PRE_RELEASE_FLAG="--prerelease"
+fi
+
+if [[ "$_OVERWRITE_RELEASE" = "" && "$GITHUB_EVENT_NAME" = "push" ]] || [[ "$_OVERWRITE_RELEASE" = "true" ]]; then
+  log_msg "Will overwrite existing assets if any"
+  _OVERWRITE_RELEASE="true"
 fi
 
 EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
@@ -151,7 +158,6 @@ _EXTRA_FILES="${EXTRA_FILES:-""}"
 _COMPRESS="${COMPRESS:-"false"}"
 _RELEASE_ARTIFACT_NAME="${RELEASE_ARTIFACT_NAME:-"$NAME"}"
 _GO_ARTIFACT_NAME="${GO_ARTIFACT_NAME:-"$_PROJECT_NAME"}"
-_OVERWRITE_RELEASE="${OVERWRITE_RELEASE:-"false"}"
 
 log_msg "Building application for $GOOS $GOARCH"
 # shellcheck disable=SC1091
