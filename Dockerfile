@@ -16,11 +16,11 @@ LABEL "maintainer"="Atsushi Nagase <a@ngs.io> (https://ngs.io)"
 
 RUN apk add --no-cache curl jq git build-base bash zip
 
-WORKDIR /code/
+WORKDIR /
 RUN wget -O gh.tar.gz https://github.com/cli/cli/releases/download/v1.11.0/gh_1.11.0_linux_386.tar.gz && \
     tar -xzvf gh.tar.gz && \
     mv gh_1.11.0_linux_386/bin/gh /usr/local/bin/gh && \
     rm -rf gh_1.11.0_linux_386 *.tar.gz
 
 COPY . .
-ENTRYPOINT ["/code/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
