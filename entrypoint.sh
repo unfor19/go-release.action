@@ -35,7 +35,7 @@ bump_version(){
   version_last_block="$(echo "$version" | rev | cut -d${delimiter} -f1 | rev)"
   if  [[ "$version_last_block" =~ ^[0-9]+[a-zA-Z]+[0-9]+$ ]]; then
     # Number and string and number
-    version_last_block_numbers=$(echo "$version_last_block" | sed 's~[A-Za-z]~ ~g' | rev | cut -d' ' -f1)
+    version_last_block_numbers=$(echo "$version_last_block" | sed 's~[A-Za-z]~ ~g' | rev | cut -d' ' -f1 | rev)
     version_last_block_bumped="$((version_last_block_numbers+1))"
   elif [[ "$version_last_block" =~ ^[0-9]+[a-zA-Z]+$ ]]; then
     # Number and string
