@@ -81,6 +81,7 @@ build(){
 }
 
 _CMD_PATH="${CMD_PATH:-""}"
+_PRE_RELEASE="${PRE_RELEASE:-""}"
 _PRE_RELEASE_FLAG=""
 
 if [[ -z "$_CMD_PATH" ]]; then
@@ -88,7 +89,7 @@ if [[ -z "$_CMD_PATH" ]]; then
 fi
 
 log_msg "Event Type: $GITHUB_EVENT_NAME"
-if [[ -z "$PRE_RELEASE" &&  "$GITHUB_EVENT_NAME" = "push" ]] || [[ "$PRE_RELEASE" = "true" ]]; then
+if [[ "$_PRE_RELEASE" = "" &&  "$GITHUB_EVENT_NAME" = "push" ]] || [[ "$_PRE_RELEASE" = "true" ]]; then
   _PRE_RELEASE_FLAG="--prerelease"
 fi
 
