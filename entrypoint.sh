@@ -123,7 +123,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   log_msg "Bumped Latest Release version: ${LATEST_VERSION}"
 
   # Create Release (no assets yet)
-  if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG ; then
+  if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
     log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
   fi
 
@@ -196,6 +196,8 @@ _CHECKSUM_MD5=$(md5sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
+
+_UPLOAD_URL="${_UPLOAD_URL/?name*/}" # Cleanup
 
 _PUBLISH_ASSET_RESULTS=$(curl \
   --connect-timeout 30 \
