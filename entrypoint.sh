@@ -28,20 +28,14 @@ bump_version(){
   # SemVer Regex: ^[0-9]+(\.[0-9]*)*(\.[0-9]+(a|b|rc)|(\.post)|(\.dev))*[0-9]+$
   local version="$1"
   local delimiter="."
-  local version_delimiters
-  local len_delimiters
   local version_last_block
   local version_last_block_bumped
   local version_last_block_numbers
   local bumped_version
-  # version_delimiters="${version//[^${delimiter}]}"
-  # len_delimiters="${#version_delimiters}"
-  # version_last_block_index="$((len_delimiters+1))"
   version_last_block="$(echo "$version" | rev | cut -d${delimiter} -f1 | rev)"
   if  [[ "$version_last_block" =~ ^[0-9]+[a-zA-Z]+[0-9]+$ ]]; then
     # Number and string and number
-    version_last_block_numbers=$(echo "$version_last_block" | sed 's~[A-Za-z]~ ~g' | cut -d' ' -f3)
-    echo "$version_last_block_numbers"
+    version_last_block_numbers=$(echo "$version_last_block" | sed 's~[A-Za-z]~ ~g' | rev | cut -d' ' -f1)
     version_last_block_bumped="$((version_last_block_numbers+1))"
   elif [[ "$version_last_block" =~ ^[0-9]+[a-zA-Z]+$ ]]; then
     # Number and string
@@ -56,7 +50,7 @@ bump_version(){
 
   bumped_version="${version%.*}.${version_last_block/$version_last_block_numbers/$version_last_block_bumped}"
 
-  if [[ "$bumped_version" = "${version}" ]]; then
+  if [[ "$bumped_version" =~ ${version} ]]; then
     error_msg "Version did not bump - ${bumped_version}"
   fi
 
@@ -104,7 +98,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   log_msg "Bumped Latest Release version: ${LATEST_VERSION}"
 
   # Create Release (no assets yet)
-  if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" >/dev/null ; then
+  if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" ; then
     log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
   fi
 
