@@ -7,7 +7,7 @@ set -o pipefail
 error_msg(){
   local msg="$1"
   echo -e "[ERR] $msg"
-  exit
+  exit 1
 }
 
 log_msg(){
@@ -15,6 +15,14 @@ log_msg(){
   echo -e "[LOG] $msg"
 }
 
+version_validation(){
+  local release_version="$1"
+  if [[ $release_version =~ ^[0-9]+(\.[0-9]*)*(\.[0-9]+(a|b|rc)|(\.post)|(\.dev))*[0-9]+$ ]]; then
+    log_msg "Passed - Release version is valid - $release_version"
+  else
+    error_msg "Failed - Release version is invalid - $release_version"
+  fi
+}
 
 bump_version(){
   # SemVer Regex: ^[0-9]+(\.[0-9]*)*(\.[0-9]+(a|b|rc)|(\.post)|(\.dev))*[0-9]+$
@@ -26,22 +34,32 @@ bump_version(){
   local version_last_block_bumped
   local version_last_block_numbers
   local bumped_version
-  version_delimiters="${version//[^${delimiter}]}"
-  len_delimiters="${#version_delimiters}"
-  version_last_block_index="$((len_delimiters+1))"
-  version_last_block="$(echo "$version" | cut -d${delimiter} -f"${version_last_block_index}")"
-  version_last_block_numbers=$(echo "$version_last_block" | tr -dc '0-9')
-  if [[ "$version_last_block" =~ ^[0-9]+$ ]]; then
-    # Number only
-    version_last_block_bumped="$(("$version_last_block"+1))"
-  elif [[ "$version_last_block" =~ ^[0-9]+([a-z]|[A-Z])+$ ]]; then
-    # Number and string
+  # version_delimiters="${version//[^${delimiter}]}"
+  # len_delimiters="${#version_delimiters}"
+  # version_last_block_index="$((len_delimiters+1))"
+  version_last_block="$(echo "$version" | rev | cut -d${delimiter} -f1 | rev)"
+  if  [[ "$version_last_block" =~ ^[0-9]+[a-zA-Z]+[0-9]+$ ]]; then
+    # Number and string and number
+    version_last_block_numbers=$(echo "$version_last_block" | sed 's~[A-Za-z]~ ~g' | cut -d' ' -f3)
+    echo "$version_last_block_numbers"
     version_last_block_bumped="$((version_last_block_numbers+1))"
+  elif [[ "$version_last_block" =~ ^[0-9]+[a-zA-Z]+$ ]]; then
+    # Number and string
+    version_last_block_numbers=$(echo "$version_last_block" | tr -dc '0-9')
+    version_last_block_bumped="$((version_last_block_numbers+1))"
+  elif [[ "$version_last_block" =~ ^[0-9]+$ ]]; then
+    # Number only
+    version_last_block_bumped="$((version_last_block+1))"
   else
     error_msg "Unknown pattern"
   fi
 
   bumped_version="${version%.*}.${version_last_block/$version_last_block_numbers/$version_last_block_bumped}"
+
+  if [[ "$bumped_version" = "${version}" ]]; then
+    error_msg "Version did not bump - ${bumped_version}"
+  fi
+
   echo "$bumped_version"
 }
 
@@ -81,7 +99,9 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
     error_msg "Error getting latest release version"
   fi
   log_msg "Latest Release version: ${LATEST_VERSION}"
+  version_validation "${LATEST_VERSION}"
   RELEASE_NAME=$(bump_version "$LATEST_VERSION")
+  log_msg "Bumped Latest Release version: ${LATEST_VERSION}"
 
   # Create Release (no assets yet)
   if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" >/dev/null ; then
@@ -96,10 +116,8 @@ fi
 log_msg "Target release version: ${RELEASE_NAME}"
 log_msg "Target release upload url for assets: ${_UPLOAD_URL}"
 
-### Version validation
-
 # shellcheck disable=SC1091
-source version_validation.sh "$RELEASE_NAME"
+version_validation "$RELEASE_NAME"
 
 _PUBILSH_CHECKSUM_SHA256="${PUBILSH_CHECKSUM_SHA256:-"true"}"
 _PUBILSH_CHECKSUM_MD5="${PUBILSH_CHECKSUM_MD5:-"false"}"
