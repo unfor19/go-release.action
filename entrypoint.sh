@@ -16,40 +16,95 @@ log_msg(){
 }
 
 
-# create_release_asset(){
-#   local artifact_path="$1"
-#   local release_artifact_name="$2"
-#   local _UPLOAD_URL="$3"
-#   curl \
-#     --connect-timeout 30 \
-#     --retry 300 \
-#     --retry-delay 5 \
-#     -X POST \
-#     --data-binary @"$_ARTIFACT_PATH" \
-#     -H 'Content-Type: application/octet-stream' \
-#     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-#     "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}")
-# }
+bump_version(){
+  # SemVer Regex: ^[0-9]+(\.[0-9]*)*(\.[0-9]+(a|b|rc)|(\.post)|(\.dev))*[0-9]+$
+  local version="$1"
+  local delimiter="."
+  local version_delimiters
+  local len_delimiters
+  local version_last_block
+  local version_last_block_bumped
+  local version_last_block_numbers
+  local bumped_version
+  version_delimiters="${version//[^${delimiter}]}"
+  len_delimiters="${#version_delimiters}"
+  version_last_block_index="$((len_delimiters+1))"
+  version_last_block="$(echo "$version" | cut -d${delimiter} -f"${version_last_block_index}")"
+  version_last_block_numbers=$(echo "$version_last_block" | tr -dc '0-9')
+  if [[ "$version_last_block" =~ ^[0-9]+$ ]]; then
+    # Number only
+    version_last_block_bumped="$(("$version_last_block"+1))"
+  elif [[ "$version_last_block" =~ ^[0-9]+([a-z]|[A-Z])+$ ]]; then
+    # Number and string
+    version_last_block_bumped="$((version_last_block_numbers+1))"
+  else
+    error_msg "Unknown pattern"
+  fi
+
+  bumped_version="${version%.*}.${version_last_block/$version_last_block_numbers/$version_last_block_bumped}"
+  echo "$bumped_version"
+}
 
 _CMD_PATH="${CMD_PATH:-""}"
+_SKIP_GH_LOGIN="${SKIP_GH_LOGIN:-"false"}"
+_FIRST_RELEASE_VERSION="${FIRST_RELEASE_VERSION:-"0.0.1rc"}"
 
-if [[ -z "$_CMD_PATH" ]]; then
-  log_msg "file=entrypoint.sh,line=6,col=1::CMD_PATH not set"
-fi
+# if [[ -z "$_CMD_PATH" ]]; then
+#   log_msg "file=entrypoint.sh,line=6,col=1::CMD_PATH not set"
+# fi
 
 export CMD_PATH="$_CMD_PATH"
 
-#echo "::warning file=/build.sh,line=1,col=5::${FILE_LIST}"
-
 EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
-# echo "$EVENT_DATA" | jq .
-_UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
-_UPLOAD_URL=${_UPLOAD_URL/\{?name,label\}/}
-RELEASE_NAME=$(echo "$EVENT_DATA" | jq -r .release.tag_name)
+
+log_msg "Event Type: $GITHUB_EVENT_NAME"
+if [[ "$GITHUB_EVENT_NAME" = "release" ]]; then
+  ### Use this release
+  _UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
+  _UPLOAD_URL=${_UPLOAD_URL/\{?name,label\}/}
+  RELEASE_NAME=$(echo "$EVENT_DATA" | jq -r .release.tag_name)
+elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
+  ### Creates a new release and use it
+  # Authenticate with GitHub
+  gh config set prompt disabled
+  if gh auth status 2>/dev/null ; then
+    log_msg "Authenticated with GitHub CLI"
+  else
+    gh config set prompt enabled
+    log_msg "Attempting to login to GitHub with the GitHub CLI and GITHUB_TOKEN"
+    echo "$GITHUB_TOKEN" | gh auth login --with-token
+  fi
+
+  # Bump version and create release
+  log_msg "Getting latest release version ..."
+  # curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest
+  LATEST_VERSION="$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest | grep "tag_name" | cut -d ':' -f2 | cut -d '"' -f2)"
+  if [[ -z "$LATEST_VERSION" ]]; then
+    error_msg "Error getting latest release version"
+  fi
+  log_msg "Latest Release version: ${LATEST_VERSION}"
+  RELEASE_NAME=$(bump_version "$LATEST_VERSION")
+
+  # Create Release (no assets yet)
+  if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" >/dev/null ; then
+    log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
+  fi
+
+  _UPLOAD_URL=$(gh release view -R "${GITHUB_REPOSITORY}" --json uploadUrl --jq .uploadUrl 2>/dev/null)
+else
+  error_msg "Unhandled event type - ${GITHUB_EVENT_PATH}"
+fi
+
+log_msg "Target release version: ${RELEASE_NAME}"
+log_msg "Target release upload url for assets: ${_UPLOAD_URL}"
+
+### Version validation
+
 # shellcheck disable=SC1091
 source version_validation.sh "$RELEASE_NAME"
-_PUBILSH_CHECKSUM_SHA256="${_PUBILSH_CHECKSUM_SHA256:-"true"}"
-_PUBILSH_CHECKSUM_MD5="${_PUBILSH_CHECKSUM_MD5:-"false"}"
+
+_PUBILSH_CHECKSUM_SHA256="${PUBILSH_CHECKSUM_SHA256:-"true"}"
+_PUBILSH_CHECKSUM_MD5="${PUBILSH_CHECKSUM_MD5:-"false"}"
 _PROJECT_NAME=$(basename "$GITHUB_REPOSITORY")
 export PROJECT_NAME="$_PROJECT_NAME"
 NAME="${NAME:-${PROJECT_NAME}_${RELEASE_NAME}}_${GOOS}_${GOARCH}"
@@ -57,7 +112,7 @@ _EXTRA_FILES="${EXTRA_FILES:-""}"
 _COMPRESS="${COMPRESS:-"false"}"
 _RELEASE_ARTIFACT_NAME="${RELEASE_ARTIFACT_NAME:-"$NAME"}"
 _GO_ARTIFACT_NAME="${GO_ARTIFACT_NAME:-"$_PROJECT_NAME"}"
-_OVERWRITE_RELEASE="${_OVERWRITE_RELEASE:-"true"}"
+_OVERWRITE_RELEASE="${OVERWRITE_RELEASE:-"true"}"
 
 log_msg "Building application for $GOOS $GOARCH"
 # shellcheck disable=SC1091
@@ -65,7 +120,7 @@ FILE_LIST=$(. /build.sh)
 log_msg "Completed building application for $GOOS $GOARCH"
 
 if [[ "$_EXTRA_FILES" = "" ]]; then
-  log_msg "file=entrypoint.sh,line=22,col=1::EXTRA_FILES not set"
+  log_msg "EXTRA_FILES not set"
 fi
 
 FILE_LIST="${FILE_LIST} ${_EXTRA_FILES}"
