@@ -57,14 +57,35 @@ bump_version(){
   echo "$bumped_version"
 }
 
+build(){
+  local project_root="/go/src/github.com/${GITHUB_REPOSITORY}"
+  local output
+  local file_extenstion
+  mkdir -p "$project_root"
+  rmdir "$project_root"
+  ln -s "$GITHUB_WORKSPACE" "$project_root"
+  cd "$project_root"
+  # go get -v ./...
+  go mod download
+
+  file_extenstion=''
+
+  if [[ "$GOOS" = 'windows' ]]; then
+    file_extenstion='.exe'
+  fi
+
+  go build "${_CMD_PATH}"
+  output="${_PROJECT_NAME}${file_extenstion}"
+
+  echo "$output"
+}
+
 _CMD_PATH="${CMD_PATH:-""}"
 
 
 if [[ -z "$_CMD_PATH" ]]; then
   log_msg "CMD_PATH not set"
 fi
-
-export CMD_PATH="$_CMD_PATH"
 
 EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
 
@@ -116,7 +137,6 @@ version_validation "$RELEASE_NAME"
 _PUBILSH_CHECKSUM_SHA256="${PUBILSH_CHECKSUM_SHA256:-"true"}"
 _PUBILSH_CHECKSUM_MD5="${PUBILSH_CHECKSUM_MD5:-"false"}"
 _PROJECT_NAME=$(basename "$GITHUB_REPOSITORY")
-export PROJECT_NAME="$_PROJECT_NAME"
 NAME="${NAME:-${PROJECT_NAME}_${RELEASE_NAME}}_${GOOS}_${GOARCH}"
 _EXTRA_FILES="${EXTRA_FILES:-""}"
 _COMPRESS="${COMPRESS:-"false"}"
@@ -126,7 +146,7 @@ _OVERWRITE_RELEASE="${OVERWRITE_RELEASE:-"true"}"
 
 log_msg "Building application for $GOOS $GOARCH"
 # shellcheck disable=SC1091
-FILE_LIST=$(. /build.sh)
+FILE_LIST="$(build)"
 log_msg "Completed building application for $GOOS $GOARCH"
 
 if [[ "$_EXTRA_FILES" = "" ]]; then
