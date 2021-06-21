@@ -46,6 +46,8 @@ EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
 _UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
 _UPLOAD_URL=${_UPLOAD_URL/\{?name,label\}/}
 RELEASE_NAME=$(echo "$EVENT_DATA" | jq -r .release.tag_name)
+# shellcheck disable=SC1091
+source version_validation.sh "$RELEASE_NAME"
 _PUBILSH_CHECKSUM_SHA256="${_PUBILSH_CHECKSUM_SHA256:-"true"}"
 _PUBILSH_CHECKSUM_MD5="${_PUBILSH_CHECKSUM_MD5:-"false"}"
 _PROJECT_NAME=$(basename "$GITHUB_REPOSITORY")
