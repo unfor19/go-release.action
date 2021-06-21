@@ -81,15 +81,18 @@ build(){
 }
 
 _CMD_PATH="${CMD_PATH:-""}"
-
+_PRE_RELEASE_FLAG=""
 
 if [[ -z "$_CMD_PATH" ]]; then
   log_msg "CMD_PATH not set"
 fi
 
-EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
-
 log_msg "Event Type: $GITHUB_EVENT_NAME"
+if [[ -z "$PRE_RELEASE" &&  "$GITHUB_EVENT_NAME" = "push" ]] || [[ "$PRE_RELEASE" = "true" ]]; then
+  _PRE_RELEASE_FLAG="--prerelease"
+fi
+
+EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
 if [[ "$GITHUB_EVENT_NAME" = "release" ]]; then
   ### Use this release
   _UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
@@ -119,7 +122,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   log_msg "Bumped Latest Release version: ${LATEST_VERSION}"
 
   # Create Release (no assets yet)
-  if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" ; then
+  if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG ; then
     log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
   fi
 
