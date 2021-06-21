@@ -128,6 +128,8 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   fi
 
   _UPLOAD_URL=$(gh release view -R "${GITHUB_REPOSITORY}" --json uploadUrl --jq .uploadUrl 2>/dev/null)
+  _UPLOAD_URL="${_UPLOAD_URL/\{*/}" # Cleanup
+
 else
   error_msg "Unhandled event type - ${GITHUB_EVENT_PATH}"
 fi
@@ -197,7 +199,6 @@ _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
-_UPLOAD_URL="${_UPLOAD_URL/?name*/}" # Cleanup
 
 _PUBLISH_ASSET_RESULTS=$(curl \
   --connect-timeout 30 \
