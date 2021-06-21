@@ -28,18 +28,18 @@ bump_version(){
   # SemVer Regex: ^[0-9]+(\.[0-9]*)*(\.[0-9]+(a|b|rc)|(\.post)|(\.dev))*[0-9]+$
   local version="$1"
   local delimiter="."
-  local version_last_block
-  local version_last_block_bumped
-  local version_last_block_numbers
-  local bumped_version
+  local version_last_block=""
+  local version_last_block_bumped=""
+  local version_last_block_numbers=""
+  local version_last_block_alpha=""
+  local version_last_block_pre=""
+  local bumped_version=""
   version_last_block="$(echo "$version" | rev | cut -d${delimiter} -f1 | rev)"
   if  [[ "$version_last_block" =~ ^[0-9]+[a-zA-Z]+[0-9]+$ ]]; then
     # Number and string and number
+    version_last_block_pre=$(echo "$version_last_block" | sed 's~[A-Za-z]~ ~g' | cut -d' ' -f1)
+    version_last_block_alpha="${version_last_block//[0-9]/}"
     version_last_block_numbers=$(echo "$version_last_block" | sed 's~[A-Za-z]~ ~g' | rev | cut -d' ' -f1 | rev)
-    version_last_block_bumped="$((version_last_block_numbers+1))"
-  elif [[ "$version_last_block" =~ ^[0-9]+[a-zA-Z]+$ ]]; then
-    # Number and string
-    version_last_block_numbers=$(echo "$version_last_block" | tr -dc '0-9')
     version_last_block_bumped="$((version_last_block_numbers+1))"
   elif [[ "$version_last_block" =~ ^[0-9]+$ ]]; then
     # Number only
@@ -48,7 +48,7 @@ bump_version(){
     error_msg "Unknown pattern"
   fi
 
-  bumped_version="${version%.*}.${version_last_block/$version_last_block_numbers/$version_last_block_bumped}"
+  bumped_version="${version%.*}.${version_last_block_pre}${version_last_block_alpha}${version_last_block_bumped}"
 
   if [[ "$bumped_version" =~ ${version} ]]; then
     error_msg "Version did not bump - ${bumped_version}"
