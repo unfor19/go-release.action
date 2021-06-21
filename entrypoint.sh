@@ -46,12 +46,11 @@ bump_version(){
 }
 
 _CMD_PATH="${CMD_PATH:-""}"
-_SKIP_GH_LOGIN="${SKIP_GH_LOGIN:-"false"}"
-_FIRST_RELEASE_VERSION="${FIRST_RELEASE_VERSION:-"0.0.1rc"}"
 
-# if [[ -z "$_CMD_PATH" ]]; then
-#   log_msg "file=entrypoint.sh,line=6,col=1::CMD_PATH not set"
-# fi
+
+if [[ -z "$_CMD_PATH" ]]; then
+  log_msg "CMD_PATH not set"
+fi
 
 export CMD_PATH="$_CMD_PATH"
 
@@ -77,7 +76,6 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
 
   # Bump version and create release
   log_msg "Getting latest release version ..."
-  # curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest
   LATEST_VERSION="$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest | grep "tag_name" | cut -d ':' -f2 | cut -d '"' -f2)"
   if [[ -z "$LATEST_VERSION" ]]; then
     error_msg "Error getting latest release version"
