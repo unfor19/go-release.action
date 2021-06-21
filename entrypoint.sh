@@ -203,8 +203,11 @@ _CONNECT_TIMEOUT="${CONNECT_TIMEOUT:-"120"}"
 _CONNECT_RETRY="${_CONNECT_RETRY:-"300"}"
 _RETRY_DELAY="${RETRY_DELAY:-"15"}"
 
+log_msg "Publishing artifact - $_ARTIFACT_PATH"
+
 _PUBLISH_ASSET_RESULTS=$(curl \
   --connect-timeout "$_CONNECT_TIMEOUT" \
+  --retry-all-errors \
   --retry "$_CONNECT_RETRY" \
   --retry-delay "$_RETRY_DELAY" \
   -X POST \
@@ -223,6 +226,7 @@ elif [[ "$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r .errors[0].code)" = "already_e
     log_msg "Overwriting existing asset ..."
     _PUBLISH_ASSET_RESULTS=$(curl \
       --connect-timeout "$_CONNECT_TIMEOUT" \
+      --retry-all-errors \
       --retry "$_CONNECT_RETRY" \
       --retry-delay "$_RETRY_DELAY" \
       -X PATCH \
@@ -236,6 +240,7 @@ fi
 if [[ "$_PUBILSH_CHECKSUM_SHA256" = "true" ]]; then
   curl \
     --connect-timeout "$_CONNECT_TIMEOUT" \
+    --retry-all-errors \
     --retry "$_CONNECT_RETRY" \
     --retry-delay "$_RETRY_DELAY" \
     -X POST \
@@ -248,6 +253,7 @@ fi
 if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
   curl \
     --connect-timeout "$_CONNECT_TIMEOUT" \
+    --retry-all-errors \
     --retry "$_CONNECT_RETRY" \
     --retry-delay "$_RETRY_DELAY" \
     -X POST \
