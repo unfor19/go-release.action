@@ -199,11 +199,14 @@ _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
+_CONNECT_TIMEOUT="${CONNECT_TIMEOUT:-"120"}"
+_CONNECT_RETRY="${_CONNECT_RETRY:-"300"}"
+_RETRY_DELAY="${RETRY_DELAY:-"10"}"
 
 _PUBLISH_ASSET_RESULTS=$(curl \
-  --connect-timeout 120 \
-  --retry 300 \
-  --retry-delay 10 \
+  --connect-timeout "$_CONNECT_TIMEOUT" \
+  --retry "$_CONNECT_RETRY" \
+  --retry-delay "$_RETRY_DELAY" \
   -X POST \
   --data-binary @"$_ARTIFACT_PATH" \
   -H 'Content-Type: application/octet-stream' \
@@ -219,9 +222,9 @@ elif [[ "$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r .errors[0].code)" = "already_e
   if [[ "$_OVERWRITE_RELEASE" = "true" ]]; then
     log_msg "Overwriting existing asset ..."
     _PUBLISH_ASSET_RESULTS=$(curl \
-      --connect-timeout 30 \
-      --retry 300 \
-      --retry-delay 5 \
+      --connect-timeout "$_CONNECT_TIMEOUT" \
+      --retry "$_CONNECT_RETRY" \
+      --retry-delay "$_RETRY_DELAY" \
       -X PATCH \
       --data-binary @"$_ARTIFACT_PATH" \
       -H 'Content-Type: application/octet-stream' \
@@ -232,9 +235,9 @@ fi
 
 if [[ "$_PUBILSH_CHECKSUM_SHA256" = "true" ]]; then
   curl \
-    --connect-timeout 30 \
-    --retry 300 \
-    --retry-delay 5 \
+    --connect-timeout "$_CONNECT_TIMEOUT" \
+    --retry "$_CONNECT_RETRY" \
+    --retry-delay "$_RETRY_DELAY" \
     -X POST \
     --data "$_CHECKSUM_SHA256" \
     -H 'Content-Type: text/plain' \
@@ -244,9 +247,9 @@ fi
 
 if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
   curl \
-    --connect-timeout 30 \
-    --retry 300 \
-    --retry-delay 5 \
+    --connect-timeout "$_CONNECT_TIMEOUT" \
+    --retry "$_CONNECT_RETRY" \
+    --retry-delay "$_RETRY_DELAY" \
     -X POST \
     --data "$_CHECKSUM_MD5" \
     -H 'Content-Type: text/plain' \
