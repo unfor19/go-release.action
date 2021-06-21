@@ -120,7 +120,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   log_msg "Latest Release version: ${LATEST_VERSION}"
   version_validation "${LATEST_VERSION}"
   RELEASE_NAME=$(bump_version "$LATEST_VERSION")
-  log_msg "Bumped Latest Release version: ${LATEST_VERSION}"
+  log_msg "Bumped Latest Release version: ${RELEASE_NAME}"
 
   # Create Release (no assets yet)
   if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
