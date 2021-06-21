@@ -15,6 +15,22 @@ log_msg(){
   echo -e "[LOG] $msg"
 }
 
+
+# create_release_asset(){
+#   local artifact_path="$1"
+#   local release_artifact_name="$2"
+#   local _UPLOAD_URL="$3"
+#   curl \
+#     --connect-timeout 30 \
+#     --retry 300 \
+#     --retry-delay 5 \
+#     -X POST \
+#     --data-binary @"$_ARTIFACT_PATH" \
+#     -H 'Content-Type: application/octet-stream' \
+#     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+#     "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}")
+# }
+
 _CMD_PATH="${CMD_PATH:-""}"
 
 if [[ -z "$_CMD_PATH" ]]; then
@@ -27,8 +43,8 @@ export CMD_PATH="$_CMD_PATH"
 
 EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
 # echo "$EVENT_DATA" | jq .
-UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
-UPLOAD_URL=${UPLOAD_URL/\{?name,label\}/}
+_UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
+_UPLOAD_URL=${_UPLOAD_URL/\{?name,label\}/}
 RELEASE_NAME=$(echo "$EVENT_DATA" | jq -r .release.tag_name)
 _PUBILSH_CHECKSUM_SHA256="${_PUBILSH_CHECKSUM_SHA256:-"true"}"
 _PUBILSH_CHECKSUM_MD5="${_PUBILSH_CHECKSUM_MD5:-"false"}"
@@ -39,6 +55,7 @@ _EXTRA_FILES="${EXTRA_FILES:-""}"
 _COMPRESS="${COMPRESS:-"false"}"
 _RELEASE_ARTIFACT_NAME="${RELEASE_ARTIFACT_NAME:-"$NAME"}"
 _GO_ARTIFACT_NAME="${GO_ARTIFACT_NAME:-"$_PROJECT_NAME"}"
+_OVERWRITE_RELEASE="${_OVERWRITE_RELEASE:-"true"}"
 
 log_msg "Building application for $GOOS $GOARCH"
 # shellcheck disable=SC1091
@@ -89,9 +106,7 @@ _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
-log_msg "Release artifact name - $_RELEASE_ARTIFACT_NAME"
-
-curl \
+_PUBLISH_ASSET_RESULTS=$(curl \
   --connect-timeout 30 \
   --retry 300 \
   --retry-delay 5 \
@@ -99,7 +114,27 @@ curl \
   --data-binary @"$_ARTIFACT_PATH" \
   -H 'Content-Type: application/octet-stream' \
   -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-  "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}" | jq
+  "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}" | jq)
+
+if [[ "$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r .errors)" = "null" && "$(echo "$_PUBLISH_ASSET_RESULTS" | jq .state)" = "uploaded" ]]; then
+  log_msg "Successfully published the asset - ${_RELEASE_ARTIFACT_NAME}"
+elif [[ "$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r .errors[0].code)" = "already_exists" && "$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r .errors[0].field)" = "name" ]]; then
+  log_msg "Release asset already exists - ${_RELEASE_ARTIFACT_NAME}"
+  _ASSET_ID=$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r . )
+  log_msg "Asset ID $_ASSET_ID"
+  if [[ "$_OVERWRITE_RELEASE" = "true" ]]; then
+    log_msg "Overwriting existing asset ..."
+    _PUBLISH_ASSET_RESULTS=$(curl \
+      --connect-timeout 30 \
+      --retry 300 \
+      --retry-delay 5 \
+      -X PATCH \
+      --data-binary @"$_ARTIFACT_PATH" \
+      -H 'Content-Type: application/octet-stream' \
+      -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+      "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}" | jq)
+  fi
+fi
 
 if [[ "$_PUBILSH_CHECKSUM_SHA256" = "true" ]]; then
   curl \
@@ -110,7 +145,7 @@ if [[ "$_PUBILSH_CHECKSUM_SHA256" = "true" ]]; then
     --data "$_CHECKSUM_SHA256" \
     -H 'Content-Type: text/plain' \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_sha256.txt" | jq
+    "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_sha256.txt" | jq
 fi
 
 if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
@@ -122,5 +157,5 @@ if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
     --data "$_CHECKSUM_MD5" \
     -H 'Content-Type: text/plain' \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    "${UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_md5.txt" | jq
+    "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_md5.txt" | jq
 fi
