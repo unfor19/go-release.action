@@ -201,9 +201,9 @@ log_msg "sha256sum - $_CHECKSUM_SHA256"
 
 
 _PUBLISH_ASSET_RESULTS=$(curl \
-  --connect-timeout 30 \
+  --connect-timeout 120 \
   --retry 300 \
-  --retry-delay 5 \
+  --retry-delay 10 \
   -X POST \
   --data-binary @"$_ARTIFACT_PATH" \
   -H 'Content-Type: application/octet-stream' \
