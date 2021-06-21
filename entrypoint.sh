@@ -234,6 +234,9 @@ elif [[ "$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r .errors[0].code)" = "already_e
       -H 'Content-Type: application/octet-stream' \
       -H "Authorization: Bearer ${GITHUB_TOKEN}" \
       "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}" | jq)
+  else
+    log_msg "Skipping upload since OVERWRITE_RELEASE is not true"
+    exit 0
   fi
 fi
 
