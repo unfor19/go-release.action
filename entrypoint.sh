@@ -92,8 +92,7 @@ gh_upload_asset(){
     --retry-all-errors \
     --retry "$_CONNECT_RETRY" \
     --retry-delay "$_RETRY_DELAY" \
-    -X "$http_method" \
-    ${data_flag}"${asset_data}" \
+    -X "$http_method" "${data_flag}"${asset_data}" \
     -H "Content-Type: ${content_type}" \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
     "$target_url" | jq
