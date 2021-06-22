@@ -122,9 +122,6 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
 
   # Bump version and create release
   log_msg "Getting latest release version ..."
-  gh release list -R "${GITHUB_REPOSITORY}"
-  gh release list -R "${GITHUB_REPOSITORY}" | head -n1
-  gh release list -R "${GITHUB_REPOSITORY}" | head -n1 | sed -e 's/\s.*$//'
   LATEST_VERSION="$(gh release list -R "${GITHUB_REPOSITORY}" | head -n1 | awk '{print $1}')"
   if [[ -z "$LATEST_VERSION" ]]; then
     error_msg "Error getting latest release version"
