@@ -135,7 +135,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   log_msg "Getting repository events ..."
   repo_events="$(gh api "/repos/${GITHUB_REPOSITORY}/events" | jq)"
   log_msg "Checking if ${RELEASE_NAME} was published by a CreateEvent or a ReleaseEvent ..."
-  release_exists=$(echo "$repo_events"| jq -rc '.[] | {type: .type, ref: .payload.ref} |  select((.type!="CreateEvent" or .type=="ReleaseEvent") and .ref=="'"${RELEASE_NAME}"'"  ) | .ref')
+  release_exists="$(echo "$repo_events"| jq -rc '.[] | select(.type=="ReleaseEvent" and .payload.action=="published" and .payload.release.prerelease == true and .payload.release.name=="'"${RELEASE_NAME}"'") | .payload.release.name')"
   if [[ -z "$release_exists" ]]; then
     log_msg "Release does not exist, creating a new release ..."
     if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
@@ -144,7 +144,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
       error_msg "Failed to create the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
     fi
   else
-    log_msg "Release already exists, skipping creation step"
+    log_msg "Release $RELEASE_NAME already exists, skipping creation step"
   fi
   _UPLOAD_URL=$(gh release view -R "${GITHUB_REPOSITORY}" --json uploadUrl --jq .uploadUrl 2>/dev/null)
   _UPLOAD_URL="${_UPLOAD_URL/\{*/}" # Cleanup
