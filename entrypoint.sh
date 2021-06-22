@@ -57,6 +57,48 @@ bump_version(){
   echo "$bumped_version"
 }
 
+gh_upload_asset(){
+  local asset_type=""
+  local asset_data="$1"
+  local name_suffix="$2"
+  local content_type=""
+  local data_flag=""
+  local target_url=""
+  local asset_name=""
+  local http_method=""
+  asset_name="${_RELEASE_ARTIFACT_NAME}"
+  if [[ "$asset_type" = "txt" ]]; then
+    log_msg "Asset type: txt"
+    content_type="text/plain"
+    data_flag="--data "
+    asset_name+="_${name_suffix}"
+  elif [[ "$asset_type" = "binary" ]]; then
+    log_msg "Asset type: binary"
+    content_type="application/octet-stream"
+    data_flag="--data-binary @"
+  fi
+
+  if [[ "$_RELEASE_ASSETS" =~ ^$asset_name$ ]]; then
+    log_msg "Asset $asset_name exists, overwriting it ..."
+    http_method="PATCH"
+  else
+    log_msg "Uploading asset ..."
+    http_method="POST"
+  fi
+
+  target_url="${_UPLOAD_URL}?name=${asset_name}"
+  curl \
+    --connect-timeout "$_CONNECT_TIMEOUT" \
+    --retry-all-errors \
+    --retry "$_CONNECT_RETRY" \
+    --retry-delay "$_RETRY_DELAY" \
+    -X "$http_method" \
+    ${data_flag}"${asset_data}" \
+    -H "Content-Type: ${content_type}" \
+    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+    "$target_url" | jq
+}
+
 build(){
   local project_root="/go/src/github.com/${GITHUB_REPOSITORY}"
   local output
@@ -98,7 +140,7 @@ if [[ "$_PRE_RELEASE" = "true" || "$GITHUB_EVENT_NAME" = "push" ]]; then
   _PRE_RELEASE_FLAG="--prerelease"
 fi
 
-if [[ "$_OVERWRITE_RELEASE" = "true" ]]; then
+if [[ "$_OVERWRITE_RELEASE" = "true" || "$GITHUB_EVENT_NAME" = "push" ]]; then
   log_msg "Will overwrite existing assets if any"
   _OVERWRITE_RELEASE="true"
 fi
@@ -122,7 +164,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
 
   # Bump version and create release
   log_msg "Getting latest release version ..."
-  LATEST_VERSION="$(gh release list -R "${GITHUB_REPOSITORY}" | head -n1 | awk '{print $1}')"
+  LATEST_VERSION="$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest | grep "tag_name" | cut -d ':' -f2 | cut -d '"' -f2)"
   if [[ -z "$LATEST_VERSION" ]]; then
     error_msg "Error getting latest release version"
   fi
@@ -130,25 +172,13 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   version_validation "${LATEST_VERSION}"
   RELEASE_NAME=$(bump_version "$LATEST_VERSION")
   log_msg "Bumped Latest Release version: ${RELEASE_NAME}"
-
-  # Create Release (no assets yet)
-  log_msg "Getting repository events ..."
-  repo_events="$(gh api "/repos/${GITHUB_REPOSITORY}/events" | jq)"
-  log_msg "Checking if ${RELEASE_NAME} was published by a CreateEvent or a ReleaseEvent ..."
-  release_exists="$(echo "$repo_events"| jq -rc '.[] | select(.type=="ReleaseEvent" and .payload.action=="published" and .payload.release.prerelease == true and .payload.release.name=="'"${RELEASE_NAME}"'") | .payload.release.name')"
-  if [[ -z "$release_exists" ]]; then
-    log_msg "Release does not exist, creating a new release ..."
-    if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
-      log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
-    else
-      error_msg "Failed to create the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
-    fi
-  else
-    log_msg "Release $RELEASE_NAME already exists, skipping creation step"
+  log_msg "Attempting to create the new release ..."
+  # Create Release if does not exist - no assets yet
+  if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
+    log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
   fi
   _UPLOAD_URL=$(gh release view -R "${GITHUB_REPOSITORY}" --json uploadUrl --jq .uploadUrl 2>/dev/null)
   _UPLOAD_URL="${_UPLOAD_URL/\{*/}" # Cleanup
-
 else
   error_msg "Unhandled event type - ${GITHUB_EVENT_PATH}"
 fi
@@ -217,64 +247,20 @@ _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
-log_msg "Publishing artifact - $_ARTIFACT_PATH"
-_PUBLISH_ASSET_RESULTS=$(curl \
-  --connect-timeout "$_CONNECT_TIMEOUT" \
-  --retry-all-errors \
-  --retry "$_CONNECT_RETRY" \
-  --retry-delay "$_RETRY_DELAY" \
-  -X POST \
-  --data-binary @"$_ARTIFACT_PATH" \
-  -H 'Content-Type: application/octet-stream' \
-  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-  "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}" | jq)
-
-if [[ "$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r .errors)" = "null" && "$(echo "$_PUBLISH_ASSET_RESULTS" | jq .state)" = "uploaded" ]]; then
-  log_msg "Successfully published the asset - ${_RELEASE_ARTIFACT_NAME}"
-elif [[ "$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r .errors[0].code)" = "already_exists" && "$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r .errors[0].field)" = "name" ]]; then
-  log_msg "Release asset already exists - ${_RELEASE_ARTIFACT_NAME}"
-  _ASSET_ID=$(echo "$_PUBLISH_ASSET_RESULTS" | jq -r . )
-  log_msg "Asset ID $_ASSET_ID"
-  if [[ "$_OVERWRITE_RELEASE" = "true" ]]; then
-    log_msg "Overwriting existing asset ..."
-    _PUBLISH_ASSET_RESULTS=$(curl \
-      --connect-timeout "$_CONNECT_TIMEOUT" \
-      --retry-all-errors \
-      --retry "$_CONNECT_RETRY" \
-      --retry-delay "$_RETRY_DELAY" \
-      -X PATCH \
-      --data-binary @"$_ARTIFACT_PATH" \
-      -H 'Content-Type: application/octet-stream' \
-      -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-      "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}" | jq)
-  else
-    log_msg "Skipping upload since OVERWRITE_RELEASE is not true"
-    exit 0
-  fi
+_RELEASE_ASSETS="$(gh release view -R "$GITHUB_REPOSITORY" "$RELEASE_NAME" --json assets --jq '.assets[] | .name' 2>/dev/null || true)"
+if [[ -z "$_RELEASE_ASSETS" ]]; then
+  log_msg "Release has no assets at all"
 fi
 
+log_msg "Uploading artifact - $_ARTIFACT_PATH"
+gh_upload_asset "binary" "$_ARTIFACT_PATH"
+
 if [[ "$_PUBILSH_CHECKSUM_SHA256" = "true" ]]; then
-  curl \
-    --connect-timeout "$_CONNECT_TIMEOUT" \
-    --retry-all-errors \
-    --retry "$_CONNECT_RETRY" \
-    --retry-delay "$_RETRY_DELAY" \
-    -X POST \
-    --data "$_CHECKSUM_SHA256" \
-    -H 'Content-Type: text/plain' \
-    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_sha256.txt" | jq
+  log_msg "Uploading SHA256 checksum ..."
+  gh_upload_asset "txt" "$_CHECKSUM_SHA256" "sha256.txt"
 fi
 
 if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
-  curl \
-    --connect-timeout "$_CONNECT_TIMEOUT" \
-    --retry-all-errors \
-    --retry "$_CONNECT_RETRY" \
-    --retry-delay "$_RETRY_DELAY" \
-    -X POST \
-    --data "$_CHECKSUM_MD5" \
-    -H 'Content-Type: text/plain' \
-    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    "${_UPLOAD_URL}?name=${_RELEASE_ARTIFACT_NAME}_md5.txt" | jq
+  log_msg "Uploading MD5 checksum ..."
+  gh_upload_asset "txt" "$_CHECKSUM_MD5" "md5.txt"
 fi
