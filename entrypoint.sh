@@ -133,10 +133,20 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   log_msg "Bumped Latest Release version: ${RELEASE_NAME}"
 
   # Create Release (no assets yet)
-  if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
-    log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
+  log_msg "Getting repository events ..."
+  repo_events="$(gh api /repos/unfor19/columbus-app/events | jq)"
+  log_msg "Checking if ${RELEASE_NAME} was published by a CreateEvent or a ReleaseEvent ..."
+  release_exists=$(echo "$repo_events"| jq '.[] | {type: .type, ref: .payload.ref} |  select((.type=="CreateEvent" or .type=="ReleaseEvent") and .ref=="'"${RELEASE_NAME}"'"  )')
+  if [[ "$release_exists" == "" ]]; then
+    log_msg "Release does not exist, creating a new release ..."
+    if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
+      log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
+    else
+      error_msg "Failed to create the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
+    fi
+  else
+    log_msg "Release already exists, skipping creation step"
   fi
-
   _UPLOAD_URL=$(gh release view -R "${GITHUB_REPOSITORY}" --json uploadUrl --jq .uploadUrl 2>/dev/null)
   _UPLOAD_URL="${_UPLOAD_URL/\{*/}" # Cleanup
 
