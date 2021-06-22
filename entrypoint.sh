@@ -62,20 +62,20 @@ gh_upload_asset(){
   local asset_data="$1"
   local name_suffix="$2"
   local content_type=""
-  local data_flag=""
   local target_url=""
   local asset_name=""
   local http_method=""
+  declare -a data_flag
   asset_name="${_RELEASE_ARTIFACT_NAME}"
   if [[ "$asset_type" = "txt" ]]; then
     log_msg "Asset type: txt"
     content_type="text/plain"
-    data_flag="--data "
+    data_flag=("--data" " ")
     asset_name+="_${name_suffix}"
   elif [[ "$asset_type" = "binary" ]]; then
     log_msg "Asset type: binary"
     content_type="application/octet-stream"
-    data_flag="--data-binary @"
+    data_flag=("--data-binary" "@")
   fi
 
   if [[ "$_RELEASE_ASSETS" =~ ^$asset_name$ ]]; then
@@ -92,7 +92,7 @@ gh_upload_asset(){
     --retry-all-errors \
     --retry "$_CONNECT_RETRY" \
     --retry-delay "$_RETRY_DELAY" \
-    -X "$http_method" "${data_flag}""${asset_data}" \
+    -X "$http_method" "${data_flag[*]}""${asset_data}" \
     -H "Content-Type: ${content_type}" \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
     "$target_url" | jq
