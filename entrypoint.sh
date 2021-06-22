@@ -93,12 +93,12 @@ if [[ -z "$_CMD_PATH" ]]; then
 fi
 
 log_msg "Event Type: $GITHUB_EVENT_NAME"
-if [[ "$_PRE_RELEASE" = "" &&  "$GITHUB_EVENT_NAME" = "push" ]] || [[ "$_PRE_RELEASE" = "true" ]]; then
+if [[ "$_PRE_RELEASE" = "true" ]]; then
   log_msg "Will publish as PRE-RELEASE"
   _PRE_RELEASE_FLAG="--prerelease"
 fi
 
-if [[ "$_OVERWRITE_RELEASE" = "" && "$GITHUB_EVENT_NAME" = "push" ]] || [[ "$_OVERWRITE_RELEASE" = "true" ]]; then
+if [[ "$_OVERWRITE_RELEASE" = "true" ]]; then
   log_msg "Will overwrite existing assets if any"
   _OVERWRITE_RELEASE="true"
 fi
