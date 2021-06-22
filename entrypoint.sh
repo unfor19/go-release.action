@@ -177,7 +177,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
     log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
   fi
-  _UPLOAD_URL=$(gh release view -R "${GITHUB_REPOSITORY}" --json uploadUrl --jq .uploadUrl 2>/dev/null)
+  _UPLOAD_URL=$(gh release view -R "${GITHUB_REPOSITORY}" "$RELEASE_NAME" --json uploadUrl --jq .uploadUrl 2>/dev/null)
   _UPLOAD_URL="${_UPLOAD_URL/\{*/}" # Cleanup
 else
   error_msg "Unhandled event type - ${GITHUB_EVENT_PATH}"
