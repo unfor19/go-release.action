@@ -133,7 +133,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
 
   # Create Release (no assets yet)
   log_msg "Getting repository events ..."
-  repo_events="$(gh api /repos/unfor19/columbus-app/events | jq)"
+  repo_events="$(gh api "/repos/${GITHUB_REPOSITORY}/events" | jq)"
   log_msg "Checking if ${RELEASE_NAME} was published by a CreateEvent or a ReleaseEvent ..."
   release_exists=$(echo "$repo_events"| jq '.[] | {type: .type, ref: .payload.ref} |  select((.type=="CreateEvent" or .type=="ReleaseEvent") and .ref=="'"${RELEASE_NAME}"'"  )')
   if [[ "$release_exists" == "" ]]; then
