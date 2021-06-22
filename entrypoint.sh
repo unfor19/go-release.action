@@ -123,7 +123,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
 
   # Bump version and create release
   log_msg "Getting latest release version ..."
-  LATEST_VERSION="$(curl --connect-timeout "$_CONNECT_TIMEOUT" --retry-all-errors --retry "$_CONNECT_RETRY" --retry-delay "$_RETRY_DELAY" -s -H "Authorization: Bearer ${GITHUB_TOKEN}" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest | grep "tag_name" | cut -d ':' -f2 | cut -d '"' -f2)"
+  LATEST_VERSION="$(gh release list -R "${GITHUB_REPOSITORY}" 2>/dev/null | head -n1 | sed -e 's/\s.*$//')"
   if [[ -z "$LATEST_VERSION" ]]; then
     error_msg "Error getting latest release version"
   fi
