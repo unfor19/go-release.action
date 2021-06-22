@@ -116,14 +116,16 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   if gh auth status 2>/dev/null ; then
     log_msg "Authenticated with GitHub CLI"
   else
-    gh config set prompt enabled
     log_msg "Attempting to login to GitHub with the GitHub CLI and GITHUB_TOKEN"
     echo "$GITHUB_TOKEN" | gh auth login --with-token
   fi
 
   # Bump version and create release
   log_msg "Getting latest release version ..."
-  LATEST_VERSION="$(gh release list -R "${GITHUB_REPOSITORY}" 2>/dev/null | head -n1 | sed -e 's/\s.*$//')"
+  gh release list -R "${GITHUB_REPOSITORY}"
+  gh release list -R "${GITHUB_REPOSITORY}" | head -n1
+  gh release list -R "${GITHUB_REPOSITORY}" | head -n1 | sed -e 's/\s.*$//'
+  LATEST_VERSION="$(gh release list -R "${GITHUB_REPOSITORY}" | head -n1 | sed -e 's/\s.*$//' 2>/dev/null) || true"
   if [[ -z "$LATEST_VERSION" ]]; then
     error_msg "Error getting latest release version"
   fi
