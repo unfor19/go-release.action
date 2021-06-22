@@ -135,8 +135,8 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   log_msg "Getting repository events ..."
   repo_events="$(gh api "/repos/${GITHUB_REPOSITORY}/events" | jq)"
   log_msg "Checking if ${RELEASE_NAME} was published by a CreateEvent or a ReleaseEvent ..."
-  release_exists=$(echo "$repo_events"| jq '.[] | {type: .type, ref: .payload.ref} |  select((.type=="CreateEvent" or .type=="ReleaseEvent") and .ref=="'"${RELEASE_NAME}"'"  )')
-  if [[ "$release_exists" == "" ]]; then
+  release_exists=$(echo "$repo_events"| jq -rc '.[] | {type: .type, ref: .payload.ref} |  select((.type!="CreateEvent" or .type=="ReleaseEvent") and .ref=="'"${RELEASE_NAME}"'"  ) | .ref')
+  if [[ -z "$release_exists" ]]; then
     log_msg "Release does not exist, creating a new release ..."
     if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
       log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
