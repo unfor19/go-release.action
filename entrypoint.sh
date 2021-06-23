@@ -58,9 +58,9 @@ bump_version(){
 }
 
 gh_upload_asset(){
-  local asset_type="$1"
-  local asset_data="$2"
-  local name_suffix="$3"
+  local asset_type="${1:-""}"
+  local asset_data="${2:-""}"
+  local name_suffix="${3:-""}"
   local content_type=""
   local target_url=""
   local asset_name=""
