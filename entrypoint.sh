@@ -79,14 +79,16 @@ gh_upload_asset(){
   fi
 
   if [[ "$_RELEASE_ASSETS" =~ ^$asset_name$ ]]; then
-    log_msg "Asset $asset_name exists, overwriting it ..."
+    log_msg "Asset $asset_name exists, overwriting it with PATCH"
     http_method="PATCH"
   else
-    log_msg "Uploading asset ..."
+    log_msg "Asset will be created with POST"
     http_method="POST"
   fi
 
   target_url="${_UPLOAD_URL}?name=${asset_name}"
+  log_msg "Target URL for upload: $target_url"
+  log_msg "-X $http_method ${data_flag[*]}${asset_data} -H Content-Type: ${content_type} -H Authorization: Bearer HIDDEN"
   curl \
     --connect-timeout "$_CONNECT_TIMEOUT" \
     --retry-all-errors \
