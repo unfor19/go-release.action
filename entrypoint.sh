@@ -65,7 +65,6 @@ gh_upload_asset(){
   local target_url=""
   local asset_name=""
   local target_delete_asset_url=""
-  local delete_asset_id=""
   declare -a data_flag
   asset_name="${_RELEASE_ARTIFACT_NAME}"
   if [[ "$asset_type" = "txt" ]]; then
@@ -81,10 +80,8 @@ gh_upload_asset(){
 
   log_msg "Asset name: ${asset_name}"
   log_msg "Checking if asset already exists ..."
-  if [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '. | select(.name=="'"${asset_name}"'")')" ]] ; then
-    delete_asset_id="$(echo "$_RELEASE_ASSETS" | jq -rc '. | select(.name=="'"${asset_name}"'") | .id')"
-    log_msg "Asset exists - ${asset_name} ${delete_asset_id}"
-    target_delete_asset_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets/${delete_asset_id}"
+  if [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'")')" ]] ; then
+    target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
     log_msg "Deleting asset - ${target_delete_asset_url}"
     curl \
       --connect-timeout "$_CONNECT_TIMEOUT" \
@@ -192,8 +189,10 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   if gh release create "$RELEASE_NAME" -t "$RELEASE_NAME" -R "${GITHUB_REPOSITORY}" $_PRE_RELEASE_FLAG >/dev/null ; then
     log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
   fi
-  _UPLOAD_URL=$(gh release view -R "${GITHUB_REPOSITORY}" "$RELEASE_NAME" --json uploadUrl --jq .uploadUrl 2>/dev/null)
+  _RELEASE_DETAILS="$(gh api -H 'Accept: application/vnd.github.v3.raw+json' /repos/"$GITHUB_REPOSITORY"/releases | jq '.[] | select(.name=="'"$RELEASE_NAME"'")')"
+  _UPLOAD_URL=$(echo "$_RELEASE_DETAILS" | jq -rc '. | .upload_url')
   _UPLOAD_URL="${_UPLOAD_URL/\{*/}" # Cleanup
+  _RELEASE_ASSETS=$(echo "$_RELEASE_DETAILS" | jq '. | .assets')
 else
   error_msg "Unhandled event type - ${GITHUB_EVENT_PATH}"
 fi
@@ -262,7 +261,7 @@ _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
-_RELEASE_ASSETS="$(gh release view -R "$GITHUB_REPOSITORY" "$RELEASE_NAME" --json assets --jq '.assets[] | {name: .name, id: .id}' 2>/dev/null || true)"
+_RELEASE_ASSETS="$(gh release view -H 'Accept: application/vnd.github.v3.raw+json' -R "$GITHUB_REPOSITORY" "$RELEASE_NAME" --json assets --jq '.assets[] | {name: .name, id: .id}' 2>/dev/null || true)"
 
 if [[ -z "$_RELEASE_ASSETS" ]]; then
   log_msg "Release has no assets at all"
