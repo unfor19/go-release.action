@@ -169,6 +169,7 @@ if [[ "$GITHUB_EVENT_NAME" = "release" ]]; then
   _RELEASE_ASSETS=$(echo "$_RELEASE_DETAILS" | jq '. | .assets')
   if [[ "$(echo "$_RELEASE_DETAILS" | jq '. | .assets')" != "[]" ]] ; then
     log_msg "Release already has artifacts, skipping upload step"
+    log_msg "$(echo "$_RELEASE_ASSETS" | jq -r '.[] | .name')"
     log_msg "Successfully skipped"
     exit 0
   fi
