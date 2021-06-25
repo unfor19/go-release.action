@@ -67,3 +67,12 @@ Extra environment variables:
           GOARCH: ${{ matrix.GOARCH }}
           GOOS: windows
 ```
+
+
+## Docker
+
+Build base image
+
+```
+docker build -t ghcr.io/unfor19/golang-ci:1.16 -f Dockerfile.base .
+```
