@@ -67,23 +67,17 @@ gh_upload_asset(){
   local target_delete_asset_url=""
   declare -a data_flag
   log_msg "Asset type: ${asset_type}"
-  if [[ "${asset_type}" = "last_updated" ]] ; then
-    content_type="text/plain"
-    data_flag=("--data" " ")
-    asset_name="${_LAST_UPDATED_PREFIX}$(date +%Y-%m-%d-%H-%M-%S-UTC)"
-    asset_data="$asset_name"
-    target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '. | map(select(.name | startswith("'"${_LAST_UPDATED_PREFIX}"'")) | .url) | .[]')"
-  elif [[ "$asset_type" = "txt" ]]; then
+  if [[ "$asset_type" = "txt" ]]; then
     asset_name="${_RELEASE_ARTIFACT_NAME}_${name_suffix}"
     content_type="text/plain"
     data_flag=("--data" " ")
-    target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
   elif [[ "$asset_type" = "binary" ]]; then
     asset_name="${_RELEASE_ARTIFACT_NAME}"
     content_type="application/octet-stream"
     data_flag=("--data-binary" "@")
-    target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
   fi
+
+  target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"  
 
   log_msg "Asset name: ${asset_name}"
   log_msg "Checking if asset already exists ..."
@@ -147,8 +141,6 @@ _CONNECT_RETRY="${_CONNECT_RETRY:-"3"}"
 _RETRY_DELAY="${RETRY_DELAY:-"20"}"
 _OVERWRITE_RELEASE="${OVERWRITE_RELEASE:-""}"
 _GH_TOKEN="${GH_TOKEN:-"$GITHUB_TOKEN"}"
-_UPLOAD_LAST_UPDATED="${UPLOAD_LAST_UPDATED:-"true"}"
-_LAST_UPDATED_PREFIX="${LAST_UPDATED_PREFIX:-"last-updated_"}"
 
 if [[ -z "$_CMD_PATH" ]]; then
   log_msg "CMD_PATH not set"
@@ -198,7 +190,7 @@ elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
     log_msg "Successfully created the release https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_NAME}"
   fi
   _RELEASE_DETAILS="$(gh api -H 'Accept: application/vnd.github.v3.raw+json' /repos/"$GITHUB_REPOSITORY"/releases | jq '.[] | select(.name=="'"$RELEASE_NAME"'")')"
-  _UPLOAD_URL=$(echo "$_RELEASE_DETAILS" | jq -rc '. | .upload_url')
+  _UPLOAD_URL="$(echo "$_RELEASE_DETAILS" | jq -rc '. | .upload_url')"
   _UPLOAD_URL="${_UPLOAD_URL/\{*/}" # Cleanup
   _RELEASE_ASSETS=$(echo "$_RELEASE_DETAILS" | jq '. | .assets')
 else
@@ -280,8 +272,4 @@ fi
 if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
   log_msg "Uploading MD5 checksum ..."
   gh_upload_asset "txt" "$_CHECKSUM_MD5" "md5.txt"
-fi
-
-if [[ "$_UPLOAD_LAST_UPDATED" = "true" ]]; then
-  gh_upload_asset "last_updated"
 fi
