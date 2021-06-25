@@ -163,6 +163,14 @@ if [[ "$GITHUB_EVENT_NAME" = "release" ]]; then
   _UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
   _UPLOAD_URL=${_UPLOAD_URL/\{?name,label\}/}
   RELEASE_NAME=$(echo "$EVENT_DATA" | jq -r .release.tag_name)
+  _RELEASE_DETAILS="$(gh api -H 'Accept: application/vnd.github.v3.raw+json' /repos/"$GITHUB_REPOSITORY"/releases | jq '.[] | select(.name=="'"$RELEASE_NAME"'")')"
+  _UPLOAD_URL="$(echo "$_RELEASE_DETAILS" | jq -rc '. | .upload_url')"
+  _UPLOAD_URL="${_UPLOAD_URL/\{*/}" # Cleanup
+  _RELEASE_ASSETS=$(echo "$_RELEASE_DETAILS" | jq '. | .assets')
+  if [[ -n "$_RELEASE_ASSETS" ]]; then
+    log_msg "Release already has artifacts, skipping upload step"
+    log_msg "Successfully skipped"
+  fi
 elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   ### Creates a new release and use it
   # Authenticate with GitHub
