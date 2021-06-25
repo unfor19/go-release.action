@@ -80,7 +80,7 @@ gh_upload_asset(){
 
   log_msg "Asset name: ${asset_name}"
   log_msg "Checking if asset already exists ..."
-  if [[ "$_RELEASE_ASSETS" =~ ^$asset_name$ ]]; then
+  if [[ "$_RELEASE_ASSETS" =~ ^${asset_name}$ ]]; then
     log_msg "Asset already exists, updating with PATCH"
     http_method="PATCH"
   else
@@ -251,9 +251,6 @@ _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
-set -x
-gh release view -R "$GITHUB_REPOSITORY" "$RELEASE_NAME" --json assets --jq '.assets[] | .name' 2>/dev/null || true
-set +x
 _RELEASE_ASSETS="$(gh release view -R "$GITHUB_REPOSITORY" "$RELEASE_NAME" --json assets --jq '.assets[] | .name' 2>/dev/null || true)"
 
 if [[ -z "$_RELEASE_ASSETS" ]]; then
