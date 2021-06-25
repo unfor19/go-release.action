@@ -64,7 +64,8 @@ gh_upload_asset(){
   local content_type=""
   local target_url=""
   local asset_name=""
-  local http_method=""
+  local target_delete_asset_url=""
+  local delete_asset_id=""
   declare -a data_flag
   asset_name="${_RELEASE_ARTIFACT_NAME}"
   if [[ "$asset_type" = "txt" ]]; then
@@ -80,24 +81,34 @@ gh_upload_asset(){
 
   log_msg "Asset name: ${asset_name}"
   log_msg "Checking if asset already exists ..."
-  if echo "$_RELEASE_ASSETS" | grep ^"${asset_name}"$ ; then
-    log_msg "Asset already exists, updating with PATCH"
-    http_method="PATCH"
-  else
-    log_msg "Asset will be created with POST"
-    http_method="POST"
+  if [[ -z "$(echo "$_RELEASE_ASSETS" | jq -rc '. | select(.name=="'"${asset_name}"'")')" ]] ; then
+    delete_asset_id="$(echo "$_RELEASE_ASSETS" | jq -rc '. | select(.name=="'"${asset_name}"'") | .id')"
+    log_msg "Asset exists - ${asset_name} ${delete_asset_id}"
+    target_delete_asset_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets/${delete_asset_id}"
+    log_msg "Deleting asset - ${target_delete_asset_url}"
+    curl \
+      --connect-timeout "$_CONNECT_TIMEOUT" \
+      --retry-all-errors \
+      --retry "$_CONNECT_RETRY" \
+      --retry-delay "$_RETRY_DELAY" \
+      -X "DELETE" \
+      -H "Accept: application/vnd.github.v3+json" \
+      -H "Authorization: Bearer ${_GH_TOKEN}" \
+      "$target_delete_asset_url" | jq
   fi
 
+  log_msg "Asset will be created with POST"
   target_url="${_UPLOAD_URL}?name=${asset_name}"
   log_msg "Target URL for upload: $target_url"
-  log_msg "-X $http_method ${data_flag[*]}${asset_data} -H Content-Type: ${content_type} -H Authorization: Bearer HIDDEN"
+  log_msg "-X POST ${data_flag[*]}${asset_data} -H Content-Type: ${content_type} -H Authorization: Bearer HIDDEN"
   curl \
     --connect-timeout "$_CONNECT_TIMEOUT" \
     --retry-all-errors \
     --retry "$_CONNECT_RETRY" \
     --retry-delay "$_RETRY_DELAY" \
-    -X "$http_method" ${data_flag[*]}"${asset_data}" \
+    -X "POST" ${data_flag[*]}"${asset_data}" \
     -H "Content-Type: ${content_type}" \
+    -H "Accept: application/vnd.github.v3+json" \
     -H "Authorization: Bearer ${_GH_TOKEN}" \
     "$target_url" | jq
 }
@@ -251,7 +262,7 @@ _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
-_RELEASE_ASSETS="$(gh release view -R "$GITHUB_REPOSITORY" "$RELEASE_NAME" --json assets --jq '.assets[] | .name' 2>/dev/null || true)"
+_RELEASE_ASSETS="$(gh release view -R "$GITHUB_REPOSITORY" "$RELEASE_NAME" --json assets --jq '.assets[] | {name: .name, id: .id}' 2>/dev/null || true)"
 
 if [[ -z "$_RELEASE_ASSETS" ]]; then
   log_msg "Release has no assets at all"
