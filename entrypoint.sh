@@ -167,9 +167,11 @@ if [[ "$GITHUB_EVENT_NAME" = "release" ]]; then
   _UPLOAD_URL="$(echo "$_RELEASE_DETAILS" | jq -rc '. | .upload_url')"
   _UPLOAD_URL="${_UPLOAD_URL/\{*/}" # Cleanup
   _RELEASE_ASSETS=$(echo "$_RELEASE_DETAILS" | jq '. | .assets')
+  log_msg "Release Assets ${_RELEASE_ASSETS[*]}"
   if [[ -n "$_RELEASE_ASSETS" ]]; then
     log_msg "Release already has artifacts, skipping upload step"
     log_msg "Successfully skipped"
+    exit 0
   fi
 elif [[ "$GITHUB_EVENT_NAME" = "push" ]]; then
   ### Creates a new release and use it
