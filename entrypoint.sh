@@ -69,7 +69,7 @@ gh_upload_asset(){
   log_msg "Asset type: ${asset_type}"
   if [[ "${asset_type}" = "last_updated" ]] ; then
     content_type="text/plain"
-    data_flag=("--data" " ")  
+    data_flag=("--data" " ")
     asset_name="${_LAST_UPDATED_PREFIX}$(date +%Y-%m-%d-%H-%M-%S-UTC)"
     target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '. | map(select(.name | startswith("'"${_LAST_UPDATED_PREFIX}"'")) | .url) | .[]')"
   elif [[ "$asset_type" = "txt" ]]; then
