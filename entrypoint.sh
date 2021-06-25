@@ -81,7 +81,7 @@ gh_upload_asset(){
 
   log_msg "Asset name: ${asset_name}"
   log_msg "Checking if asset already exists ..."
-  if [[ -z "$(echo "$_RELEASE_ASSETS" | jq -rc '. | select(.name=="'"${asset_name}"'")')" ]] ; then
+  if [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '. | select(.name=="'"${asset_name}"'")')" ]] ; then
     delete_asset_id="$(echo "$_RELEASE_ASSETS" | jq -rc '. | select(.name=="'"${asset_name}"'") | .id')"
     log_msg "Asset exists - ${asset_name} ${delete_asset_id}"
     target_delete_asset_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets/${delete_asset_id}"
