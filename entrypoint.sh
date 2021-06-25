@@ -67,31 +67,26 @@ gh_upload_asset(){
   local target_delete_asset_url=""
   declare -a data_flag
   log_msg "Asset type: ${asset_type}"
-  if [[ "${asset_type}" = "$_LAST_UPDATED_PREFIX" ]] ; then
+  if [[ "${asset_type}" = "last_updated" ]] ; then
     content_type="text/plain"
     data_flag=("--data" " ")  
     asset_name="${_LAST_UPDATED_PREFIX}$(date +%Y-%m-%d-%H-%M-%S-UTC)"
-  else
-    asset_name="${_RELEASE_ARTIFACT_NAME}"
-  fi
-
-  if [[ "$asset_type" = "txt" ]]; then
+    target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | startswith(.name=="'"${_LAST_UPDATED_PREFIX}"'") | .url')"
+  elif [[ "$asset_type" = "txt" ]]; then
+    asset_name="${_RELEASE_ARTIFACT_NAME}_${name_suffix}"
     content_type="text/plain"
     data_flag=("--data" " ")
-    asset_name+="_${name_suffix}"
+    target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
   elif [[ "$asset_type" = "binary" ]]; then
+    asset_name="${_RELEASE_ARTIFACT_NAME}"
     content_type="application/octet-stream"
     data_flag=("--data-binary" "@")
+    target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
   fi
 
   log_msg "Asset name: ${asset_name}"
   log_msg "Checking if asset already exists ..."
-  if [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | startswith(.name=="'"${_LAST_UPDATED_PREFIX}"'")')" ]] || [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'")')" ]] ; then
-    if [[ "$asset_type" == "last_updated" && -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | startswith(.name=="'"${_LAST_UPDATED_PREFIX}"'")')" ]] ; then
-      target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
-    elif [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'")')" ]] ; then
-      target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
-    fi
+  if [[ -n "$target_delete_asset_url" ]] ; then
     log_msg "Deleting asset - ${target_delete_asset_url}"
     curl \
       --connect-timeout "$_CONNECT_TIMEOUT" \
