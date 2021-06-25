@@ -80,7 +80,7 @@ gh_upload_asset(){
 
   log_msg "Asset name: ${asset_name}"
   log_msg "Checking if asset already exists ..."
-  if [[ "$_RELEASE_ASSETS" =~ ^${asset_name}$ ]]; then
+  if echo "$_RELEASE_ASSETS" | grep ^"${asset_name}"$ ; then
     log_msg "Asset already exists, updating with PATCH"
     http_method="PATCH"
   else
