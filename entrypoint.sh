@@ -78,8 +78,10 @@ gh_upload_asset(){
     data_flag=("--data-binary" "@")
   fi
 
+  log_msg "Asset name: ${asset_name}"
+  log_msg "Checking if asset already exists ..."
   if [[ "$_RELEASE_ASSETS" =~ ^$asset_name$ ]]; then
-    log_msg "Asset $asset_name exists, overwriting it with PATCH"
+    log_msg "Asset already exists, updating with PATCH"
     http_method="PATCH"
   else
     log_msg "Asset will be created with POST"
