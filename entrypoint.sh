@@ -248,9 +248,15 @@ _CHECKSUM_SHA256=$(sha256sum "$_ARTIFACT_PATH" | cut -d ' ' -f 1)
 log_msg "md5sum - $_CHECKSUM_MD5"
 log_msg "sha256sum - $_CHECKSUM_SHA256"
 
+set -x
+gh release view -R "$GITHUB_REPOSITORY" "$RELEASE_NAME" --json assets --jq '.assets[] | .name' 2>/dev/null || true
+set +x
 _RELEASE_ASSETS="$(gh release view -R "$GITHUB_REPOSITORY" "$RELEASE_NAME" --json assets --jq '.assets[] | .name' 2>/dev/null || true)"
+
 if [[ -z "$_RELEASE_ASSETS" ]]; then
   log_msg "Release has no assets at all"
+else
+  log_msg "Release Assets:\n${_RELEASE_ASSETS}"
 fi
 
 log_msg "Uploading artifact - $_ARTIFACT_PATH"
