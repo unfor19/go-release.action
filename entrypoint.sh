@@ -66,22 +66,32 @@ gh_upload_asset(){
   local asset_name=""
   local target_delete_asset_url=""
   declare -a data_flag
-  asset_name="${_RELEASE_ARTIFACT_NAME}"
+  log_msg "Asset type: ${asset_type}"
+  if [[ "${asset_type}" = "$_LAST_UPDATED_PREFIX" ]] ; then
+    content_type="text/plain"
+    data_flag=("--data" " ")  
+    asset_name="${_LAST_UPDATED_PREFIX}$(date +%Y-%m-%d-%H-%M-%S-UTC)"
+  else
+    asset_name="${_RELEASE_ARTIFACT_NAME}"
+  fi
+
   if [[ "$asset_type" = "txt" ]]; then
-    log_msg "Asset type: txt"
     content_type="text/plain"
     data_flag=("--data" " ")
     asset_name+="_${name_suffix}"
   elif [[ "$asset_type" = "binary" ]]; then
-    log_msg "Asset type: binary"
     content_type="application/octet-stream"
     data_flag=("--data-binary" "@")
   fi
 
   log_msg "Asset name: ${asset_name}"
   log_msg "Checking if asset already exists ..."
-  if [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'")')" ]] ; then
-    target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
+  if [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | startswith(.name=="'"${_LAST_UPDATED_PREFIX}"'")')" ]] || [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'")')" ]] ; then
+    if [[ "$asset_type" == "last_updated" && -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | startswith(.name=="'"${_LAST_UPDATED_PREFIX}"'")')" ]] ; then
+      target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
+    elif [[ -n "$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'")')" ]] ; then
+      target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '.[] | select(.name=="'"${asset_name}"'") | .url')"
+    fi
     log_msg "Deleting asset - ${target_delete_asset_url}"
     curl \
       --connect-timeout "$_CONNECT_TIMEOUT" \
@@ -141,6 +151,8 @@ _CONNECT_RETRY="${_CONNECT_RETRY:-"3"}"
 _RETRY_DELAY="${RETRY_DELAY:-"20"}"
 _OVERWRITE_RELEASE="${OVERWRITE_RELEASE:-""}"
 _GH_TOKEN="${GH_TOKEN:-"$GITHUB_TOKEN"}"
+_UPLOAD_LAST_UPDATED="${UPLOAD_LAST_UPDATED:-"true"}"
+_LAST_UPDATED_PREFIX="${LAST_UPDATED_PREFIX:-"last-updated_"}"
 
 if [[ -z "$_CMD_PATH" ]]; then
   log_msg "CMD_PATH not set"
@@ -272,4 +284,8 @@ fi
 if [[ "$_PUBILSH_CHECKSUM_MD5" = "true" ]]; then
   log_msg "Uploading MD5 checksum ..."
   gh_upload_asset "txt" "$_CHECKSUM_MD5" "md5.txt"
+fi
+
+if [[ "$_UPLOAD_LAST_UPDATED" = "true" ]]; then
+  gh_upload_asset "last_updated"
 fi
