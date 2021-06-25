@@ -71,6 +71,7 @@ gh_upload_asset(){
     content_type="text/plain"
     data_flag=("--data" " ")
     asset_name="${_LAST_UPDATED_PREFIX}$(date +%Y-%m-%d-%H-%M-%S-UTC)"
+    asset_data="$asset_name"
     target_delete_asset_url="$(echo "$_RELEASE_ASSETS" | jq -rc '. | map(select(.name | startswith("'"${_LAST_UPDATED_PREFIX}"'")) | .url) | .[]')"
   elif [[ "$asset_type" = "txt" ]]; then
     asset_name="${_RELEASE_ARTIFACT_NAME}_${name_suffix}"
